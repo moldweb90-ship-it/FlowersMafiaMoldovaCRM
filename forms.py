@@ -104,15 +104,12 @@ class UserForm(FlaskForm):
         DataRequired(message='Логин обязателен'),
         Length(min=3, max=80, message='Логин должен быть от 3 до 80 символов')
     ])
-    current_password = PasswordField('Текущий пароль', validators=[
-        DataRequired(message='Введите текущий пароль для подтверждения')
-    ])
     new_password = PasswordField('Новый пароль', validators=[
-        DataRequired(message='Новый пароль обязателен'),
+        Optional(),
         Length(min=6, message='Пароль должен содержать минимум 6 символов')
     ])
     confirm_password = PasswordField('Подтвердите новый пароль', validators=[
-        DataRequired(message='Подтверждение пароля обязательно'),
+        Optional(),
         EqualTo('new_password', message='Пароли должны совпадать')
     ])
 

@@ -2,7 +2,8 @@ import csv
 import io
 import os
 import requests
-from urllib.parse import quote
+import time
+from urllib.parse import quote, urlparse
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill
 from flask import render_template, request, redirect, url_for, flash, make_response, jsonify, session
@@ -106,6 +107,96 @@ def sync_prices_to_site(items):
     }
 
 # Проверка авторизации
+def verify_live_site_prices(items, sync_result):
+    """Check that the public storefront renders the new prices after endpoint update."""
+    if not sync_result.get('success') or not sync_result.get('results'):
+        return sync_result
+
+    settings = get_site_sync_settings()
+    public_host = settings['host_header'] or urlparse(settings['endpoint']).hostname
+    if not public_host:
+        return sync_result
+
+    item_by_sku = {item['sku']: item for item in items}
+    verified = []
+    mismatched = []
+    skipped = 0
+
+    headers = {
+        'Cache-Control': 'no-cache, no-store, max-age=0',
+        'Pragma': 'no-cache',
+        'User-Agent': 'FlowersMafiaCRM-LivePriceCheck/1.0',
+    }
+
+    for result in sync_result.get('results', [])[:10]:
+        if not result.get('success'):
+            continue
+
+        sku = result.get('sku')
+        item = item_by_sku.get(sku)
+        product_id = result.get('product_id')
+
+        if not item or not product_id:
+            skipped += 1
+            continue
+
+        expected_price = int(item['price'])
+        check_url = (
+            f'https://{public_host}/index.php?option=com_virtuemart'
+            f'&view=productdetails&virtuemart_product_id={int(product_id)}'
+            f'&crmcheck={int(time.time())}'
+        )
+
+        try:
+            response = requests.get(check_url, headers=headers, timeout=20)
+            page = response.text
+            expected_tokens = [
+                f'"price":"{expected_price}.00"',
+                f'"price": "{expected_price}.00"',
+                f"content='{expected_price}'",
+                f'content="{expected_price}"',
+                f'>{expected_price} MDL',
+            ]
+
+            if response.ok and any(token in page for token in expected_tokens):
+                verified.append({
+                    'sku': sku,
+                    'price': expected_price,
+                    'url': response.url,
+                })
+            else:
+                mismatched.append({
+                    'sku': sku,
+                    'price': expected_price,
+                    'url': response.url,
+                    'status_code': response.status_code,
+                    'message': 'Живой сайт не показывает новую цену.',
+                })
+        except Exception as exc:
+            mismatched.append({
+                'sku': sku,
+                'price': expected_price,
+                'url': check_url,
+                'message': str(exc),
+            })
+
+    sync_result['live_check'] = {
+        'checked': len(verified) + len(mismatched),
+        'verified': verified,
+        'mismatched': mismatched,
+        'skipped': skipped,
+    }
+
+    if mismatched:
+        sync_result['success'] = False
+        sync_result['message'] = (
+            'Endpoint принял цены, но живой сайт не подтвердил обновление. '
+            'Публичный домен смотрит на другой сервер или кэш.'
+        )
+
+    return sync_result
+
+
 def require_login(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -1129,7 +1220,7 @@ def api_site_sync_prices():
                 'configured': bool(get_site_sync_settings()['endpoint'] and get_site_sync_settings()['token'])
             })
 
-        sync_result = sync_prices_to_site(items)
+        sync_result = verify_live_site_prices(items, sync_prices_to_site(items))
 
         return jsonify({
             'success': bool(sync_result.get('success')),
@@ -1210,28 +1301,24 @@ def api_export_stats():
 @app.route('/user')
 def user_index():
     """User management page"""
-    # Получаем пользователя admin (у нас только он)
-    user = User.query.filter_by(username='admin').first()
+    user = User.query.get(session.get('user_id'))
+    if not user:
+        return redirect(url_for('login'))
     return render_template('user/index.html', user=user)
 
 @app.route('/user/edit', methods=['GET', 'POST'])
 def user_edit():
     """Edit user credentials"""
     form = UserForm()
-    
-    # Получаем пользователя admin
-    user = User.query.filter_by(username='admin').first()
+    user = User.query.get(session.get('user_id'))
+    if not user:
+        return redirect(url_for('login'))
     
     # Pre-fill username
     if request.method == 'GET':
         form.username.data = user.username
     
     if form.validate_on_submit():
-        # Verify current password
-        if not user.check_password(form.current_password.data):
-            flash('Текущий пароль неверен', 'error')
-            return render_template('user/edit.html', form=form)
-        
         # Check if username is already taken by another user
         existing_user = User.query.filter(User.username == form.username.data, User.id != user.id).first()
         if existing_user:
@@ -1241,9 +1328,19 @@ def user_edit():
         try:
             # Update user data
             user.username = form.username.data
-            user.set_password(form.new_password.data)
+            new_password = (form.new_password.data or '').strip()
+            confirm_password = (form.confirm_password.data or '').strip()
+
+            if new_password:
+                if new_password != confirm_password:
+                    flash('Пароли должны совпадать', 'error')
+                    return render_template('user/edit.html', form=form)
+                user.set_password(new_password)
+
             db.session.commit()
             
+            session['username'] = user.username
+            session['role'] = user.role
             flash('Данные пользователя успешно обновлены!', 'success')
             return redirect(url_for('user_index'))
             
