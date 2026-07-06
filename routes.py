@@ -47,10 +47,22 @@ def get_site_sync_settings():
         None,
         os.environ.get('SITE_SYNC_TOKEN', '')
     )
+    host_header = GlobalSetting.get_value(
+        'site_sync_host_header',
+        None,
+        os.environ.get('SITE_SYNC_HOST_HEADER', '')
+    )
+    verify_ssl = GlobalSetting.get_value(
+        'site_sync_verify_ssl',
+        None,
+        os.environ.get('SITE_SYNC_VERIFY_SSL', '1')
+    )
 
     return {
         'endpoint': (endpoint or '').strip(),
         'token': (token or '').strip(),
+        'host_header': (host_header or '').strip(),
+        'verify_ssl': str(verify_ssl).lower() not in ('0', 'false', 'no', 'off'),
     }
 
 
@@ -64,13 +76,19 @@ def sync_prices_to_site(items):
             'results': []
         }
 
+    headers = {
+        'X-CRM-Token': settings['token'],
+        'Content-Type': 'application/json'
+    }
+
+    if settings['host_header']:
+        headers['Host'] = settings['host_header']
+
     response = requests.post(
         settings['endpoint'],
         json={'items': items},
-        headers={
-            'X-CRM-Token': settings['token'],
-            'Content-Type': 'application/json'
-        },
+        headers=headers,
+        verify=settings['verify_ssl'],
         timeout=30
     )
 
@@ -883,12 +901,16 @@ def settings_index():
             markup_percentage = form.markup_percentage.data if form.markup_percentage.data is not None else 17.0
             site_sync_endpoint = (form.site_sync_endpoint.data or '').strip()
             site_sync_token = (form.site_sync_token.data or '').strip()
+            site_sync_host_header = (form.site_sync_host_header.data or '').strip()
+            site_sync_verify_ssl = '1' if form.site_sync_verify_ssl.data else '0'
             
             # Сохраняем глобальные настройки (set_value автоматически сохранит их с user_id=None)
             GlobalSetting.set_value('delivery_cost', str(delivery_cost))
             GlobalSetting.set_value('markup_percentage', str(markup_percentage))
             GlobalSetting.set_value('site_sync_endpoint', site_sync_endpoint)
             GlobalSetting.set_value('site_sync_token', site_sync_token)
+            GlobalSetting.set_value('site_sync_host_header', site_sync_host_header)
+            GlobalSetting.set_value('site_sync_verify_ssl', site_sync_verify_ssl)
             flash('Настройки успешно обновлены!', 'success')
             return redirect(url_for('settings_index'))
         except Exception as e:
@@ -902,12 +924,16 @@ def settings_index():
         markup_percentage = GlobalSetting.get_value('markup_percentage', None, '17')
         site_sync_endpoint = GlobalSetting.get_value('site_sync_endpoint', None, os.environ.get('SITE_SYNC_ENDPOINT', ''))
         site_sync_token = GlobalSetting.get_value('site_sync_token', None, os.environ.get('SITE_SYNC_TOKEN', ''))
+        site_sync_host_header = GlobalSetting.get_value('site_sync_host_header', None, os.environ.get('SITE_SYNC_HOST_HEADER', ''))
+        site_sync_verify_ssl = GlobalSetting.get_value('site_sync_verify_ssl', None, os.environ.get('SITE_SYNC_VERIFY_SSL', '1'))
         if delivery_cost:
             form.delivery_cost.data = float(delivery_cost)
         if markup_percentage:
             form.markup_percentage.data = float(markup_percentage)
         form.site_sync_endpoint.data = site_sync_endpoint or ''
         form.site_sync_token.data = site_sync_token or ''
+        form.site_sync_host_header.data = site_sync_host_header or ''
+        form.site_sync_verify_ssl.data = str(site_sync_verify_ssl).lower() not in ('0', 'false', 'no', 'off')
     
     return render_template('settings/index.html', form=form)
 

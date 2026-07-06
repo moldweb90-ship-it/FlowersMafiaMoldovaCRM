@@ -148,7 +148,7 @@ class GlobalSetting(db.Model):
         from flask_login import current_user
         
         # Global settings like delivery_cost and markup_percentage
-        if key in ['delivery_cost', 'markup_percentage', 'site_sync_endpoint', 'site_sync_token']:
+        if key in ['delivery_cost', 'markup_percentage', 'site_sync_endpoint', 'site_sync_token', 'site_sync_host_header', 'site_sync_verify_ssl']:
             setting = GlobalSetting.query.filter_by(key=key, user_id=None).first()
             return setting.value if setting else default
         
@@ -164,7 +164,7 @@ class GlobalSetting(db.Model):
         from flask_login import current_user
         
         # Global settings like delivery_cost and markup_percentage
-        if key in ['delivery_cost', 'markup_percentage', 'site_sync_endpoint', 'site_sync_token']:
+        if key in ['delivery_cost', 'markup_percentage', 'site_sync_endpoint', 'site_sync_token', 'site_sync_host_header', 'site_sync_verify_ssl']:
             setting = GlobalSetting.query.filter_by(key=key, user_id=None).first()
             if setting:
                 setting.value = str(value)

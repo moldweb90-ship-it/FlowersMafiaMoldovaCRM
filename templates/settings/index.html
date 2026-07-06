@@ -80,7 +80,7 @@
                                 </div>
                             </div>
 
-                            <div class="mb-0">
+                            <div class="mb-3">
                                 {{ form.site_sync_token.label(class="form-label") }}
                                 {{ form.site_sync_token(class="form-control" + (" is-invalid" if form.site_sync_token.errors else ""), placeholder="секретный token") }}
                                 {% if form.site_sync_token.errors %}
@@ -92,6 +92,29 @@
                                 {% endif %}
                                 <div class="form-text">
                                     Этот token должен совпадать с token в файле endpoint на сайте.
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                {{ form.site_sync_host_header.label(class="form-label") }}
+                                {{ form.site_sync_host_header(class="form-control" + (" is-invalid" if form.site_sync_host_header.errors else ""), placeholder="flowersmafia.md") }}
+                                {% if form.site_sync_host_header.errors %}
+                                    <div class="invalid-feedback">
+                                        {% for error in form.site_sync_host_header.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                                <div class="form-text">
+                                    Нужно, если CRM отправляет запрос напрямую на backend IP, а сайт ожидает домен flowersmafia.md.
+                                </div>
+                            </div>
+
+                            <div class="form-check mb-0">
+                                {{ form.site_sync_verify_ssl(class="form-check-input") }}
+                                {{ form.site_sync_verify_ssl.label(class="form-check-label") }}
+                                <div class="form-text">
+                                    Для прямого backend IP можно выключить, если сертификат выдан на flowersmafia.md.
                                 </div>
                             </div>
                         </div>

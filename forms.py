@@ -70,6 +70,11 @@ class GlobalSettingsForm(FlaskForm):
         Optional(),
         Length(max=200, message='Token не должен быть длиннее 200 символов')
     ])
+    site_sync_host_header = StringField('Host header для backend', validators=[
+        Optional(),
+        Length(max=200, message='Host header не должен быть длиннее 200 символов')
+    ])
+    site_sync_verify_ssl = BooleanField('Проверять SSL сертификат', default=True)
 
 class ExportForm(FlaskForm):
     category_id = SelectField('Category (Optional)', coerce=int)
