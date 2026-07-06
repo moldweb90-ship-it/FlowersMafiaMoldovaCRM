@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Цветочная Мафия Молдова | CRM для флористики</title>
+    <meta name="description" content="CRM-система Цветочная Мафия Молдова для управления цветами, букетами и ценами.">
+    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="container-fluid">
+        <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+            <div class="container">
+                <a class="navbar-brand" href="/">
+                    <i class="fas fa-seedling me-2"></i>Цветочная Мафия Молдова
+                </a>
+                <div class="navbar-nav ms-auto">
+                    <a class="nav-link" href="{{ url_for('login') }}">
+                        <i class="fas fa-sign-in-alt me-1"></i>Вход
+                    </a>
+                </div>
+            </div>
+        </nav>
+        
+        <div class="container mt-4">
+            <div class="row">
+                <div class="col-12">
+                    <h1 class="mb-4">Управление цветочным бизнесом</h1>
+                    
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <div class="card bg-primary text-white">
+                                <div class="card-body">
+                                    <h5><i class="fas fa-seedling me-2"></i>Цветы</h5>
+                                    <h3>{{ flower_count }}</h3>
+                                    <a href="{{ url_for('flowers_index') }}" class="btn btn-light btn-sm">Управление</a>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-3 mb-3">
+                            <div class="card bg-success text-white">
+                                <div class="card-body">
+                                    <h5><i class="fas fa-tags me-2"></i>Категории</h5>
+                                    <h3>{{ category_count }}</h3>
+                                    <a href="{{ url_for('categories_index') }}" class="btn btn-light btn-sm">Управление</a>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-3 mb-3">
+                            <div class="card bg-info text-white">
+                                <div class="card-body">
+                                    <h5><i class="fas fa-bouquet me-2"></i>Букеты</h5>
+                                    <h3>{{ bouquet_count }}</h3>
+                                    <a href="{{ url_for('bouquets_index') }}" class="btn btn-light btn-sm">Управление</a>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-3 mb-3">
+                            <div class="card bg-secondary text-white">
+                                <div class="card-body">
+                                    <h5><i class="fas fa-download me-2"></i>Экспорт</h5>
+                                    <p class="mb-2">Данные</p>
+                                    <a href="{{ url_for('export_index') }}" class="btn btn-light btn-sm">Экспорт</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {% if recent_bouquets %}
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <h3>Последние букеты</h3>
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Название</th>
+                                            <th>Артикул</th>
+                                            <th>Цена</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for bouquet in recent_bouquets %}
+                                        <tr>
+                                            <td>{{ bouquet.name }}</td>
+                                            <td>{{ bouquet.sku }}</td>
+                                            <td>{{ bouquet.final_price }} лей</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

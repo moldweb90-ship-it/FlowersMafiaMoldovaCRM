@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+
+{% block title %}Настройки | Цветочная Мафия Молдова{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mb-4">
+                <i class="fas fa-cog me-2"></i>Глобальные настройки
+            </h1>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-calculator me-2"></i>Конфигурация цен
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        {{ form.hidden_tag() }}
+                        
+                        <div class="mb-4">
+                            {{ form.delivery_cost.label(class="form-label") }}
+                            <div class="input-group">
+                                {{ form.delivery_cost(class="form-control" + (" is-invalid" if form.delivery_cost.errors else ""), step="0.01", min="0") }}
+                                <span class="input-group-text">лей</span>
+                                {% if form.delivery_cost.errors %}
+                                    <div class="invalid-feedback">
+                                        {% for error in form.delivery_cost.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="form-text">
+                                Фиксированная стоимость доставки, добавляемая ко всем ценам букетов.
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            {{ form.markup_percentage.label(class="form-label") }}
+                            <div class="input-group">
+                                {{ form.markup_percentage(class="form-control" + (" is-invalid" if form.markup_percentage.errors else ""), step="0.1", min="0") }}
+                                <span class="input-group-text">%</span>
+                                {% if form.markup_percentage.errors %}
+                                    <div class="invalid-feedback">
+                                        {% for error in form.markup_percentage.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="form-text">
+                                Процент наценки, применяемый к (стоимость цветов + стоимость доставки).
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>Сохранить настройки
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Пример расчета цен -->
+            <div class="card mt-4 border-info">
+                <div class="card-header bg-info text-white">
+                    <h6 class="mb-0">
+                        <i class="fas fa-info-circle me-2"></i>Формула расчета цены
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Шаги расчета:</h6>
+                            <ol>
+                                <li>Рассчитать стоимость цветов: <code>Σ(количество × цена_цветка)</code></li>
+                                <li>Добавить стоимость доставки: <code>стоимость_цветов + доставка</code></li>
+                                <li>Применить наценку: <code>итого × (1 + наценка% / 100)</code></li>
+                            </ol>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Пример:</h6>
+                            <div class="small">
+                                <div>5 роз @ 200 лей = 1,000 лей</div>
+                                <div>3 пиона @ 500 лей = 1,500 лей</div>
+                                <div class="border-top pt-1">
+                                    <div>Стоимость цветов: 2,500 лей</div>
+                                    <div>+ Доставка: <span id="exampleDelivery">500</span> лей</div>
+                                    <div>= Промежуточный итог: <span id="exampleSubtotal">3000</span> лей</div>
+                                    <div>× Наценка (<span id="exampleMarkup">17.0</span>%): <span id="exampleFinal">3510</span> лей</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Предупреждение об автоперерасчете -->
+            <div class="card mt-4 border-warning">
+                <div class="card-header bg-warning text-dark">
+                    <h6 class="mb-0">
+                        <i class="fas fa-exclamation-triangle me-2"></i>Важное примечание
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <p class="mb-0">
+                        <strong>Автоматическое обновление цен:</strong> При изменении этих настроек все цены букетов будут автоматически пересчитаны на основе новых значений. Это обеспечивает согласованность ценообразования во всем каталоге.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    // Update example calculation when values change
+    function updateExample() {
+        const delivery = parseFloat($('#delivery_cost').val() || 0);
+        const markup = parseFloat($('#markup_percentage').val() || 0);
+        
+        const flowerCosts = 2500; // Fixed example
+        const subtotal = flowerCosts + delivery;
+        const final = subtotal * (1 + markup / 100);
+        
+        $('#exampleDelivery').text(delivery.toFixed(0));
+        $('#exampleSubtotal').text(subtotal.toFixed(0));
+        $('#exampleMarkup').text(markup.toFixed(1));
+        $('#exampleFinal').text(final.toFixed(0));
+    }
+    
+    // Initial update
+    updateExample();
+    
+    // Update on input change
+    $('#delivery_cost, #markup_percentage').on('input', updateExample);
+    
+    // Format inputs on blur
+    $('#delivery_cost').on('blur', function() {
+        const value = parseFloat($(this).val());
+        if (!isNaN(value)) {
+            $(this).val(value.toFixed(2));
+        }
+    });
+    
+    $('#markup_percentage').on('blur', function() {
+        const value = parseFloat($(this).val());
+        if (!isNaN(value)) {
+            $(this).val(value.toFixed(1));
+        }
+    });
+});
+</script>
+{% endblock %}

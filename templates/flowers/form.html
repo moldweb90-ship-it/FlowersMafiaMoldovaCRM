@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} | Цветочная Мафия Молдова{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('flowers_index') }}">
+                            <i class="fas fa-leaf me-1"></i>Flowers
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item active">{{ title }}</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8 col-lg-6 mx-auto">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-leaf me-2"></i>{{ title }}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        {{ form.hidden_tag() }}
+                        
+                        <div class="mb-3">
+                            {{ form.name.label(class="form-label") }}
+                            {{ form.name(class="form-control" + (" is-invalid" if form.name.errors else "")) }}
+                            {% if form.name.errors %}
+                                <div class="invalid-feedback">
+                                    {% for error in form.name.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">
+                                Введите название цветка (например, "Красные розы", "Белые пионы").
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            {{ form.price_per_unit.label(class="form-label") }}
+                            <div class="input-group">
+                                {{ form.price_per_unit(class="form-control" + (" is-invalid" if form.price_per_unit.errors else ""), step="0.01", min="0") }}
+                                <span class="input-group-text">лей</span>
+                                {% if form.price_per_unit.errors %}
+                                    <div class="invalid-feedback">
+                                        {% for error in form.price_per_unit.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="form-text">
+                                Цена за одну единицу/стебель этого цветка.
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{{ url_for('flowers_index') }}" class="btn btn-secondary">
+                                <i class="fas fa-times me-2"></i>Отмена
+                            </a>
+                            <button type="submit" name="action" value="save_and_stay" class="btn btn-outline-primary">
+                                <i class="fas fa-save me-2"></i>Сохранить и остаться
+                            </button>
+                            <button type="submit" name="action" value="save_and_close" class="btn btn-primary">
+                                <i class="fas fa-check me-2"></i>Сохранить и закрыть
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if form.name.data %}
+    <div class="row mt-4">
+        <div class="col-md-8 col-lg-6 mx-auto">
+            <div class="card border-info">
+                <div class="card-header bg-info text-white">
+                    <h6 class="mb-0">
+                        <i class="fas fa-info-circle me-2"></i>Влияние изменения цены
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <p class="mb-0">
+                        <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                        При изменении цены этого цветка все букеты, содержащие его, автоматически пересчитают свои цены.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    // Focus on the first form field
+    $('#name').focus();
+    
+    // Format price input
+    $('#price_per_unit').on('input', function() {
+        var value = $(this).val();
+        if (value && !isNaN(value)) {
+            // Ensure 2 decimal places on blur
+            $(this).on('blur', function() {
+                var num = parseFloat($(this).val());
+                if (!isNaN(num)) {
+                    $(this).val(num.toFixed(2));
+                }
+            });
+        }
+    });
+    
+    // Handle form submission with action tracking
+    $('button[type="submit"]').click(function(e) {
+        const action = $(this).val();
+        console.log('Нажата кнопка с действием:', action);
+        
+        // Store the action in a hidden field or form data
+        const form = $(this).closest('form');
+        
+        // Remove any existing action input
+        form.find('input[name="action"]').remove();
+        
+        // Add the action as a hidden input
+        form.append('<input type="hidden" name="action" value="' + action + '">');
+    });
+});
+</script>
+{% endblock %}

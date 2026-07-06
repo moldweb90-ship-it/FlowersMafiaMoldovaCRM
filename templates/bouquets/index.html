@@ -1,0 +1,372 @@
+{% extends "base.html" %}
+
+{% block title %}Букеты | Цветочная Мафия Молдова{% endblock %}
+
+{% block content %}
+<style>
+.bouquet-row {
+    display: flex;
+    align-items: center;
+    padding: 10px 12px;
+    border-bottom: 1px solid #eee;
+    gap: 8px;
+    transition: background 0.15s;
+}
+.bouquet-row:last-child {
+    border-bottom: none;
+}
+.bouquet-row.unpublished {
+    background: rgba(255, 193, 7, 0.07);
+}
+.bouquet-row:hover {
+    background: rgba(0,0,0,0.03);
+}
+.bouquet-row .b-info {
+    flex: 1;
+    min-width: 0;
+}
+.bouquet-row .b-name {
+    font-weight: 700;
+    font-size: 14px;
+    margin: 0;
+    line-height: 1.3;
+}
+.bouquet-row .b-sku {
+    font-size: 11px;
+    color: #888;
+    font-family: monospace;
+}
+.bouquet-row .b-cat {
+    font-size: 11px;
+    color: #666;
+    background: #e9ecef;
+    border-radius: 8px;
+    padding: 1px 8px;
+    display: inline-block;
+    margin-top: 2px;
+}
+.bouquet-row .b-price {
+    font-size: 15px;
+    font-weight: 700;
+    color: #198754;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.bouquet-row .b-actions {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+}
+.bouquet-row .b-actions .btn {
+    font-size: 13px;
+    padding: 4px 7px;
+    border-radius: 6px;
+}
+.badge-unpublished {
+    background: #ffc107;
+    color: #000;
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 8px;
+    margin-left: 4px;
+    vertical-align: middle;
+}
+@media (min-width: 992px) {
+    .desktop-table { display: block; }
+    .mobile-list { display: none; }
+}
+@media (max-width: 991px) {
+    .desktop-table { display: none; }
+    .mobile-list { display: block; }
+}
+.filter-card .form-control,
+.filter-card .form-select {
+    font-size: 14px;
+}
+</style>
+
+<div class="container">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h1 class="fs-3">
+                    <i class="fas fa-gift me-2"></i>Каталог букетов
+                </h1>
+                <a href="{{ url_for('bouquets_new') }}" class="btn btn-primary btn-sm">
+                    <i class="fas fa-plus me-1"></i><span class="d-none d-sm-inline">Добавить букет</span><span class="d-inline d-sm-none">+</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Фильтры и поиск -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="card filter-card">
+                <div class="card-body py-2">
+                    <form method="GET" class="row g-2 align-items-end" id="filterForm">
+                        <div class="col-12 col-sm-5 col-md-4">
+                            <label class="form-label mb-1 small">Поиск</label>
+                            <div class="input-group input-group-sm">
+                                <input type="text" name="search" class="form-control" 
+                                       placeholder="Название или артикул" 
+                                       value="{{ search_query or '' }}">
+                                <button type="submit" class="btn btn-outline-primary">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-6 col-sm-4 col-md-3">
+                            <label class="form-label mb-1 small">Категория</label>
+                            <select name="category_id" class="form-select form-select-sm" onchange="this.form.submit()">
+                                <option value="">Все категории</option>
+                                {% for category in categories %}
+                                <option value="{{ category.id }}" {% if category.id == selected_category_id %}selected{% endif %}>
+                                    {{ category.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-6 col-sm-3 col-md-2">
+                            <label class="form-label mb-1 small">Статус</label>
+                            <select name="published" class="form-select form-select-sm" onchange="this.form.submit()">
+                                <option value="">Все</option>
+                                <option value="1" {% if request.args.get('published') == '1' %}selected{% endif %}>Опублик.</option>
+                                <option value="0" {% if request.args.get('published') == '0' %}selected{% endif %}>Скрытые</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-sm-auto">
+                            <div class="d-flex gap-2">
+                                {% if selected_category_id or search_query %}
+                                <a href="{{ url_for('bouquets_index') }}" class="btn btn-outline-secondary btn-sm">
+                                    <i class="fas fa-times"></i> <span class="d-none d-md-inline">Сбросить</span>
+                                </a>
+                                {% endif %}
+                                <button type="submit" class="btn btn-primary btn-sm">
+                                    <i class="fas fa-filter"></i> <span class="d-none d-md-inline">Применить</span>
+                                </button>
+                            </div>
+                        </div>
+                        <input type="hidden" name="page" value="1">
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if bouquets %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header py-2">
+                    <h6 class="mb-0 fs-6">
+                        <i class="fas fa-list me-2"></i>
+                        {% if search_query %}
+                            Результаты поиска "{{ search_query }}" ({{ pagination.total }})
+                        {% elif selected_category_name %}
+                            "{{ selected_category_name }}" ({{ pagination.total }})
+                        {% else %}
+                            Все букеты ({{ pagination.total }})
+                        {% endif %}
+                    </h6>
+                </div>
+                <div class="card-body p-0">
+
+                    <!-- Desktop table -->
+                    <div class="desktop-table">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0" id="bouquetsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Название</th>
+                                        <th>Артикул</th>
+                                        <th>Категория</th>
+                                        <th>Состав</th>
+                                        <th>Цена</th>
+                                        <th>Действия</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for bouquet in bouquets %}
+                                    <tr{% if not bouquet.published %} class="table-secondary"{% endif %}>
+                                        <td>
+                                            <i class="fas fa-gift me-2 text-info"></i>
+                                            <strong>{{ bouquet.name }}</strong>
+                                            {% if not bouquet.published %}
+                                            <span class="badge bg-warning ms-2">Не опубликован</span>
+                                            {% endif %}
+                                        </td>
+                                        <td><code>{{ bouquet.sku }}</code></td>
+                                        <td><span class="badge bg-secondary">{{ bouquet.category.name }}</span></td>
+                                        <td>
+                                            {% if bouquet.compositions %}
+                                                <div class="small">
+                                                    {% for comp in bouquet.compositions %}
+                                                        <div>{{ comp.quantity }}x {{ comp.flower.name }}</div>
+                                                    {% endfor %}
+                                                </div>
+                                            {% else %}
+                                                <span class="text-muted">Нет состава</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <strong class="text-success">{{ "%.0f"|format(bouquet.final_price|round(-1)) }} лей</strong>
+                                        </td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <a href="{{ url_for('bouquets_edit', id=bouquet.id, category_id=selected_category_id, search=search_query, page=pagination.page) }}" class="btn btn-sm btn-outline-primary">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                                <a href="{{ url_for('bouquets_clone', id=bouquet.id, category_id=selected_category_id, search=search_query, page=pagination.page) }}" class="btn btn-sm btn-outline-info" title="Копировать">
+                                                    <i class="fas fa-copy"></i>
+                                                </a>
+                                                {% if bouquet.published %}
+                                                <form method="POST" action="{{ url_for('bouquets_unpublish', id=bouquet.id) }}" class="d-inline" onsubmit="return confirm('Снять с публикации?')">
+                                                    <button type="submit" class="btn btn-sm btn-outline-warning" title="Скрыть">
+                                                        <i class="fas fa-eye-slash"></i>
+                                                    </button>
+                                                </form>
+                                                {% else %}
+                                                <form method="POST" action="{{ url_for('bouquets_publish', id=bouquet.id) }}" class="d-inline">
+                                                    <button type="submit" class="btn btn-sm btn-outline-success" title="Опубликовать">
+                                                        <i class="fas fa-eye"></i>
+                                                    </button>
+                                                </form>
+                                                {% endif %}
+                                                <form method="POST" action="{{ url_for('bouquets_delete', id=bouquet.id) }}" class="d-inline" onsubmit="return confirm('Удалить букет?')">
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Mobile list -->
+                    <div class="mobile-list">
+                        {% for bouquet in bouquets %}
+                        <div class="bouquet-row{% if not bouquet.published %} unpublished{% endif %}">
+                            <div class="b-info">
+                                <p class="b-name">
+                                    <i class="fas fa-gift text-info me-1"></i>{{ bouquet.name }}
+                                    {% if not bouquet.published %}
+                                    <span class="badge-unpublished">Скрыт</span>
+                                    {% endif %}
+                                </p>
+                                <span class="b-sku">{{ bouquet.sku }}</span>
+                                <span class="b-cat">{{ bouquet.category.name }}</span>
+                            </div>
+                            <div class="b-price">{{ "%.0f"|format(bouquet.final_price|round(-1)) }} лей</div>
+                            <div class="b-actions">
+                                <a href="{{ url_for('bouquets_edit', id=bouquet.id, category_id=selected_category_id, search=search_query, page=pagination.page) }}" class="btn btn-outline-primary" title="Редактировать">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <a href="{{ url_for('bouquets_clone', id=bouquet.id, category_id=selected_category_id, search=search_query, page=pagination.page) }}" class="btn btn-outline-info" title="Копировать">
+                                    <i class="fas fa-copy"></i>
+                                </a>
+                                {% if bouquet.published %}
+                                <form method="POST" action="{{ url_for('bouquets_unpublish', id=bouquet.id) }}" class="d-inline" onsubmit="return confirm('Снять с публикации?')">
+                                    <button type="submit" class="btn btn-outline-warning" title="Скрыть">
+                                        <i class="fas fa-eye-slash"></i>
+                                    </button>
+                                </form>
+                                {% else %}
+                                <form method="POST" action="{{ url_for('bouquets_publish', id=bouquet.id) }}" class="d-inline">
+                                    <button type="submit" class="btn btn-outline-success" title="Опубликовать">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </form>
+                                {% endif %}
+                                <form method="POST" action="{{ url_for('bouquets_delete', id=bouquet.id) }}" class="d-inline" onsubmit="return confirm('Удалить?')">
+                                    <button type="submit" class="btn btn-outline-danger" title="Удалить">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <!-- Постраничная навигация -->
+                    {% if pagination.pages > 1 %}
+                    <div class="d-flex flex-column flex-sm-row justify-content-between align-items-center p-3 gap-2">
+                        <div class="text-muted small text-center">
+                            {{ pagination.per_page * (pagination.page - 1) + 1 }}-{{ pagination.per_page * (pagination.page - 1) + bouquets|length }} из {{ pagination.total }}
+                        </div>
+                        <nav>
+                            <ul class="pagination pagination-sm mb-0">
+                                {% if pagination.has_prev %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('bouquets_index', page=pagination.prev_num, category_id=selected_category_id, search=search_query) }}">
+                                        <i class="fas fa-chevron-left"></i>
+                                    </a>
+                                </li>
+                                {% else %}
+                                <li class="page-item disabled"><span class="page-link"><i class="fas fa-chevron-left"></i></span></li>
+                                {% endif %}
+                                
+                                {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+                                    {% if page_num %}
+                                        {% if page_num != pagination.page %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="{{ url_for('bouquets_index', page=page_num, category_id=selected_category_id, search=search_query) }}">{{ page_num }}</a>
+                                        </li>
+                                        {% else %}
+                                        <li class="page-item active"><span class="page-link">{{ page_num }}</span></li>
+                                        {% endif %}
+                                    {% else %}
+                                    <li class="page-item disabled"><span class="page-link">…</span></li>
+                                    {% endif %}
+                                {% endfor %}
+                                
+                                {% if pagination.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('bouquets_index', page=pagination.next_num, category_id=selected_category_id, search=search_query) }}">
+                                        <i class="fas fa-chevron-right"></i>
+                                    </a>
+                                </li>
+                                {% else %}
+                                <li class="page-item disabled"><span class="page-link"><i class="fas fa-chevron-right"></i></span></li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-gift fa-3x text-muted mb-3"></i>
+                    {% if selected_category_id %}
+                        <h5>Нет букетов в этой категории</h5>
+                        <p class="text-muted">Попробуйте другую категорию или добавьте новый букет.</p>
+                        <a href="{{ url_for('bouquets_new') }}" class="btn btn-primary me-2">
+                            <i class="fas fa-plus me-2"></i>Добавить букет
+                        </a>
+                        <a href="{{ url_for('bouquets_index') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-list me-2"></i>Все букеты
+                        </a>
+                    {% else %}
+                        <h5>В каталоге пока нет букетов</h5>
+                        <p class="text-muted">Создайте свой первый букет.</p>
+                        <a href="{{ url_for('bouquets_new') }}" class="btn btn-primary">
+                            <i class="fas fa-plus me-2"></i>Создать первый букет
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

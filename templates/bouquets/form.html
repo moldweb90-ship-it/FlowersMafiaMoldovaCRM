@@ -1,0 +1,465 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} | Цветочная Мафия Молдова{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('bouquets_index') }}">
+                            <i class="fas fa-gift me-1"></i>Букеты
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item active">{{ title }}</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-gift me-2"></i>{{ title }}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" id="bouquetForm">
+                        {{ form.hidden_tag() }}
+                        <input type="hidden" name="composition_data" id="composition_data" value="">
+                        
+                        <!-- Basic Information -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    {{ form.name.label(class="form-label") }}
+                                    {{ form.name(class="form-control" + (" is-invalid" if form.name.errors else "")) }}
+                                    {% if form.name.errors %}
+                                        <div class="invalid-feedback">
+                                            {% for error in form.name.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    {{ form.sku.label(class="form-label") }}
+                                    {{ form.sku(class="form-control" + (" is-invalid" if form.sku.errors else "")) }}
+                                    {% if form.sku.errors %}
+                                        <div class="invalid-feedback">
+                                            {% for error in form.sku.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    {{ form.category_id.label(class="form-label") }}
+                                    {{ form.category_id(class="form-select" + (" is-invalid" if form.category_id.errors else "")) }}
+                                    {% if form.category_id.errors %}
+                                        <div class="invalid-feedback">
+                                            {% for error in form.category_id.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Bouquet Composition -->
+                        <div class="mb-4">
+                            <h6 class="mb-3 text-muted">
+                                <i class="fas fa-leaf me-2"></i>Состав букета
+                            </h6>
+                            
+                            <div id="compositionContainer">
+                                <!-- Composition rows will be added here dynamically -->
+                            </div>
+                            
+                            <button type="button" class="btn btn-outline-primary" id="addCompositionRow">
+                                <i class="fas fa-plus me-2"></i>Добавить цветок
+                            </button>
+                        </div>
+
+                        <!-- Price Calculation -->
+                        <div class="mb-4">
+                            <div class="card bg-dark-subtle">
+                                <div class="card-header">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-calculator me-2"></i>Расчет цены
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="d-flex justify-content-between">
+                                                <span>Стоимость цветов:</span>
+                                                <span id="flowersCost">0.00 лей</span>
+                                            </div>
+                                            <div class="d-flex justify-content-between">
+                                                <span>Стоимость доставки:</span>
+                                                <span id="deliveryCost">0.00 лей</span>
+                                            </div>
+                                            <div class="d-flex justify-content-between">
+                                                <span>Наценка (%):</span>
+                                                <span id="markupPercent">0%</span>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="d-flex justify-content-between border-top pt-2">
+                                                <strong>Итоговая цена:</strong>
+                                                <strong class="text-success" id="finalPrice">0.00 лей</strong>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Publication Status -->
+                        <div class="mb-4">
+                            <div class="form-check">
+                                {{ form.published(class="form-check-input") }}
+                                {{ form.published.label(class="form-check-label") }}
+                                <div class="form-text">
+                                    Опубликованные букеты отображаются в каталоге и включаются в экспорт данных.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{{ url_for('bouquets_index') }}" class="btn btn-secondary">
+                                <i class="fas fa-times me-2"></i>Отмена
+                            </a>
+                            <button type="submit" name="action" value="save" class="btn btn-outline-primary">
+                                <i class="fas fa-save me-2"></i>Сохранить
+                            </button>
+                            <button type="submit" name="action" value="save_and_close" class="btn btn-primary">
+                                <i class="fas fa-check me-2"></i>Сохранить и закрыть
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Composition Row Template -->
+<template id="compositionRowTemplate">
+    <div class="composition-row border rounded p-3 mb-3">
+        <div class="row align-items-center">
+            <div class="col-md-5">
+                <label class="form-label">Цветок</label>
+                <select class="form-select flower-select" required>
+                    <option value="">Выберите цветок</option>
+                    <!-- Options will be populated by JavaScript -->
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Количество</label>
+                <input type="number" class="form-control quantity-input" min="1" value="1" required>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Стоимость</label>
+                <div class="form-control-plaintext subtotal">0.00 лей</div>
+            </div>
+            <div class="col-md-1">
+                <label class="form-label">&nbsp;</label>
+                <button type="button" class="btn btn-outline-danger btn-sm w-100 remove-row">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</template>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+let flowers = [];
+let globalSettings = {
+    delivery_cost: 0,
+    markup_percentage: 0
+};
+
+$(document).ready(function() {
+    // Загружаем данные сразу простым способом
+    $.get('/api/flowers', function(data) {
+        flowers = data || []; // API возвращает массив напрямую
+        console.log('Цветы загружены:', flowers);
+        
+        $.get('/api/settings', function(settings) {
+            globalSettings.delivery_cost = settings.delivery_cost;
+            globalSettings.markup_percentage = settings.markup_percentage;
+            console.log('Настройки загружены:', globalSettings);
+            
+            // Обновляем отображение настроек сразу после загрузки
+            updatePriceDisplay();
+            
+            // Инициализируем форму после загрузки всех данных
+            initializeForm();
+        });
+    });
+    
+    $('#addCompositionRow').click(function() {
+        addCompositionRow();
+    });
+    
+    $(document).on('click', '.remove-row', function() {
+        $(this).closest('.composition-row').remove();
+        calculatePrice();
+    });
+    
+    $(document).on('change', '.flower-select, .quantity-input', function() {
+        const row = $(this).closest('.composition-row');
+        calculateRowSubtotal(row[0]);
+        
+        // Принудительно пересчитываем с актуальными настройками
+        setTimeout(function() {
+            calculatePrice();
+        }, 50);
+    });
+});
+
+function initializeForm() {
+    // Load existing composition if editing
+    {% if bouquet and bouquet.compositions %}
+        let hasCompositions = false;
+        {% for composition in bouquet.compositions %}
+            addCompositionRow({{ composition.flower_id }}, {{ composition.quantity }});
+            hasCompositions = true;
+        {% endfor %}
+        
+        if (!hasCompositions) {
+            // If no compositions found, add empty row
+            addCompositionRow();
+        }
+    {% else %}
+        // Initialize with one empty row for new bouquet
+        addCompositionRow();
+    {% endif %}
+    
+    // Recalculate price after loading existing data
+    setTimeout(() => {
+        calculatePrice();
+    }, 100);
+}
+
+function loadFlowersData() {
+    return $.get('/api/flowers')
+        .done(function(data) {
+            console.log('Ответ API цветов:', data);
+            console.log('Тип данных:', typeof data);
+            
+            if (data && data.flowers && Array.isArray(data.flowers)) {
+                flowers = data.flowers;
+                console.log('Цветы успешно загружены:', flowers);
+            } else {
+                console.error('Неправильный формат данных цветов:', data);
+                flowers = [];
+            }
+        })
+        .fail(function(xhr, status, error) {
+            console.error('Ошибка загрузки цветов:', error);
+            console.error('Статус:', status);
+            console.error('Ответ сервера:', xhr.responseText);
+            flowers = [];
+        });
+}
+
+// Удаляем дублирующую функцию - используем только одну загрузку в ready()
+
+function updateFlowerSelects() {
+    $('.flower-select').each(function() {
+        const currentValue = $(this).val();
+        const $select = $(this);
+        
+        // Очистить все опции кроме первой (placeholder)
+        $select.find('option:not(:first)').remove();
+        
+        // Добавить цветы из массива
+        if (flowers && flowers.length > 0) {
+            flowers.forEach(function(flower) {
+                const option = new Option(
+                    `${flower.name} (${flower.price_per_unit} лей)`,
+                    flower.id,
+                    false,
+                    flower.id == currentValue
+                );
+                option.setAttribute('data-price', flower.price_per_unit);
+                $select.append(option);
+            });
+        } else {
+            console.warn('Нет доступных цветов для загрузки');
+        }
+    });
+}
+
+function addCompositionRow(selectedFlowerId = null, selectedQuantity = 1) {
+    const template = document.getElementById('compositionRowTemplate');
+    const clone = template.content.cloneNode(true);
+    
+    // Set quantity if provided
+    const quantityInput = clone.querySelector('.quantity-input');
+    if (quantityInput && selectedQuantity) {
+        quantityInput.value = selectedQuantity;
+    }
+    
+    document.getElementById('compositionContainer').appendChild(clone);
+    updateFlowerSelects();
+    
+    // Set selected flower if provided
+    if (selectedFlowerId) {
+        const lastRow = document.querySelector('#compositionContainer .composition-row:last-child');
+        const flowerSelect = lastRow.querySelector('.flower-select');
+        if (flowerSelect) {
+            flowerSelect.value = selectedFlowerId;
+            calculateRowSubtotal(lastRow);
+        }
+    }
+    
+    calculatePrice();
+}
+
+function calculateRowSubtotal(row) {
+    const flowerSelect = row.querySelector('.flower-select');
+    const quantityInput = row.querySelector('.quantity-input');
+    const subtotalDisplay = row.querySelector('.subtotal');
+    
+    const price = parseFloat(flowerSelect.selectedOptions[0]?.dataset.price || 0);
+    const quantity = parseInt(quantityInput.value || 0);
+    const subtotal = price * quantity;
+    
+    subtotalDisplay.textContent = formatCurrency(subtotal);
+}
+
+function calculatePrice() {
+    let flowersCost = 0;
+    
+    $('.composition-row').each(function() {
+        const flowerSelect = $(this).find('.flower-select');
+        const quantity = parseInt($(this).find('.quantity-input').val() || 0);
+        const price = parseFloat(flowerSelect.find('option:selected').data('price') || 0);
+        
+        flowersCost += price * quantity;
+    });
+    
+    // Принудительно используем только данные из загруженных настроек
+    const deliveryCost = globalSettings.delivery_cost;
+    const markupPercent = globalSettings.markup_percentage;
+    
+    // Проверяем, что настройки загружены
+    if (deliveryCost === undefined || markupPercent === undefined) {
+        console.warn('Настройки еще не загружены, ожидаем...');
+        return;
+    }
+    
+    const totalWithDelivery = flowersCost + deliveryCost;
+    const finalPrice = totalWithDelivery * (1 + markupPercent / 100);
+    
+    // Обновляем отображение с принудительным использованием загруженных настроек
+    $('#flowersCost').text(formatCurrency(flowersCost));
+    $('#deliveryCost').text(formatCurrency(deliveryCost));
+    $('#markupPercent').text(markupPercent + '%');
+    $('#finalPrice').text(formatCurrency(finalPrice));
+    
+    console.log('Расчет цены:', {
+        flowersCost: flowersCost,
+        deliveryCost: deliveryCost, 
+        markupPercent: markupPercent,
+        finalPrice: finalPrice
+    });
+}
+
+function updatePriceDisplay() {
+    // Обновляем отображение данных из настроек
+    if (globalSettings.delivery_cost !== undefined) {
+        $('#deliveryCost').text(globalSettings.delivery_cost.toFixed(2) + ' лей');
+    }
+    if (globalSettings.markup_percentage !== undefined) {
+        $('#markupPercent').text(globalSettings.markup_percentage + '%');
+    }
+}
+
+function updateFlowerSelects() {
+    $('.flower-select').each(function() {
+        const currentValue = $(this).val();
+        const $select = $(this);
+        
+        // Очистить все опции кроме первой (placeholder)
+        $select.find('option:not(:first)').remove();
+        
+        // Добавить цветы из массива
+        if (flowers && flowers.length > 0) {
+            flowers.forEach(function(flower) {
+                const option = new Option(
+                    `${flower.name} (${flower.price_per_unit} лей)`,
+                    flower.id,
+                    false,
+                    flower.id == currentValue
+                );
+                option.setAttribute('data-price', flower.price_per_unit);
+                $select.append(option);
+            });
+            console.log('Обновлены селекты цветов, добавлено:', flowers.length, 'цветков');
+        } else {
+            console.warn('Нет доступных цветов для загрузки');
+        }
+    });
+}
+
+// Сохраняем какая кнопка была нажата
+let clickedAction = 'save';
+$('button[type="submit"]').click(function() {
+    clickedAction = $(this).val() || 'save';
+    console.log('Нажата кнопка с действием:', clickedAction);
+});
+
+// Form submission handling
+$('#bouquetForm').submit(function(e) {
+    const compositionData = [];
+    
+    $('.composition-row').each(function() {
+        const flowerId = $(this).find('.flower-select').val();
+        const quantity = parseInt($(this).find('.quantity-input').val() || 0);
+        
+        if (flowerId && quantity > 0) {
+            compositionData.push({
+                flower_id: flowerId,
+                quantity: quantity
+            });
+        }
+    });
+    
+    // Update existing hidden field instead of creating new one
+    $('#composition_data').val(JSON.stringify(compositionData));
+    
+    // Добавляем скрытое поле с действием если его нет
+    if (!$('input[name="action"]').length) {
+        $('<input>').attr({
+            type: 'hidden',
+            name: 'action',
+            value: clickedAction
+        }).appendTo(this);
+    } else {
+        $('input[name="action"]').val(clickedAction);
+    }
+    
+    console.log('Отправка данных композиции:', compositionData);
+    console.log('Действие:', clickedAction);
+    console.log('Значение скрытого поля:', $('#composition_data').val());
+});
+</script>
+{% endblock %}

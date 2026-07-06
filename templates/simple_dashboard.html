@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Цветочная Мафия Молдова | CRM для флористики</title>
+    <meta name="description" content="CRM-система Цветочная Мафия Молдова для управления цветами, букетами и ценами.">
+    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Блок входа -->
+    <div id="login-section">
+        <div class="container mt-5">
+            <div class="row justify-content-center">
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-body">
+                            <h3 class="text-center mb-4">
+                                <i class="fas fa-seedling text-success"></i>
+                                Цветочная Мафия Молдова
+                            </h3>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Логин</label>
+                                <input type="text" class="form-control" id="username" value="admin">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Пароль</label>
+                                <input type="password" class="form-control" id="password" value="dancerboy">
+                            </div>
+                            
+                            <button onclick="login()" class="btn btn-primary w-100">
+                                <i class="fas fa-sign-in-alt"></i> Войти
+                            </button>
+                            
+                            <div id="login-status" class="mt-3"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Основное приложение -->
+    <div id="app-section" style="display: none;">
+        <!-- Навигация -->
+        <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+            <div class="container-fluid">
+                <span class="navbar-brand">
+                    <i class="fas fa-seedling"></i> Цветочная Мафия Молдова
+                </span>
+                
+                <div class="navbar-nav me-auto">
+                    <a class="nav-link active" href="#" onclick="showTab('dashboard')">
+                        <i class="fas fa-tachometer-alt"></i> Главная
+                    </a>
+                    <a class="nav-link" href="#" onclick="showTab('flowers')">
+                        <i class="fas fa-flower"></i> Цветы
+                    </a>
+                    <a class="nav-link" href="#" onclick="showTab('categories')">
+                        <i class="fas fa-tags"></i> Категории
+                    </a>
+                    <a class="nav-link" href="#" onclick="showTab('bouquets')">
+                        <i class="fas fa-gift"></i> Букеты
+                    </a>
+                    <a class="nav-link" href="#" onclick="showTab('settings')">
+                        <i class="fas fa-cog"></i> Настройки
+                    </a>
+                </div>
+                
+                <div class="navbar-nav">
+                    <a class="nav-link" href="#" onclick="logout()">
+                        <i class="fas fa-sign-out-alt"></i> Выход
+                    </a>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Содержимое -->
+        <div class="container-fluid mt-4">
+            <!-- Дашборд -->
+            <div id="tab-dashboard">
+                <h2><i class="fas fa-tachometer-alt"></i> Панель управления</h2>
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="card text-center bg-primary">
+                            <div class="card-body">
+                                <i class="fas fa-flower fa-3x"></i>
+                                <h3 id="flowers-count">12</h3>
+                                <p>Цветов</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center bg-info">
+                            <div class="card-body">
+                                <i class="fas fa-tags fa-3x"></i>
+                                <h3 id="categories-count">5</h3>
+                                <p>Категорий</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center bg-success">
+                            <div class="card-body">
+                                <i class="fas fa-gift fa-3x"></i>
+                                <h3 id="bouquets-count">8</h3>
+                                <p>Букетов</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center bg-warning">
+                            <div class="card-body">
+                                <i class="fas fa-calculator fa-3x"></i>
+                                <button class="btn btn-dark mt-2" onclick="recalculatePrices()">
+                                    <i class="fas fa-sync"></i> Пересчитать
+                                </button>
+                                <p class="mt-2">Цены</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Цветы -->
+            <div id="tab-flowers" style="display: none;">
+                <h2><i class="fas fa-flower"></i> Управление цветами</h2>
+                
+                <!-- Кнопка добавления -->
+                <button class="btn btn-success mb-3" onclick="showAddFlowerForm()">
+                    <i class="fas fa-plus"></i> Добавить цветок
+                </button>
+                
+                <!-- Форма добавления/редактирования -->
+                <div id="flower-form" class="card mb-3" style="display: none;">
+                    <div class="card-body">
+                        <h5 id="flower-form-title">Добавить цветок</h5>
+                        <form id="flower-form-data">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Название цветка</label>
+                                        <input type="text" class="form-control" id="flower-name" required>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Цена за единицу (лей)</label>
+                                        <input type="number" class="form-control" id="flower-price" step="0.01" required>
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Сохранить
+                            </button>
+                            <button type="button" class="btn btn-secondary" onclick="hideFlowerForm()">
+                                <i class="fas fa-times"></i> Отмена
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                
+                <!-- Список цветов -->
+                <div class="card">
+                    <div class="card-body">
+                        <div id="flowers-loading" class="text-center">
+                            <i class="fas fa-spinner fa-spin"></i> Загрузка цветов...
+                        </div>
+                        <div id="flowers-table" style="display: none;">
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Название</th>
+                                            <th>Цена за единицу</th>
+                                            <th>Действия</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="flowers-tbody">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div id="flowers-empty" class="text-center text-muted" style="display: none;">
+                            <i class="fas fa-flower fa-3x mb-3"></i>
+                            <p>Цветы не найдены. Добавьте первый цветок!</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Категории -->
+            <div id="tab-categories" style="display: none;">
+                <h2><i class="fas fa-tags"></i> Управление категориями</h2>
+                <div class="alert alert-info">
+                    <h4>Раздел "Категории" работает! 🏷️</h4>
+                    <p>Здесь будет управление категориями букетов.</p>
+                </div>
+            </div>
+
+            <!-- Букеты -->
+            <div id="tab-bouquets" style="display: none;">
+                <h2><i class="fas fa-gift"></i> Управление букетами</h2>
+                <div class="alert alert-warning">
+                    <h4>Раздел "Букеты" работает! 💐</h4>
+                    <p>Здесь будет создание букетов из цветов с автоматическим расчетом цен.</p>
+                </div>
+            </div>
+
+            <!-- Настройки -->
+            <div id="tab-settings" style="display: none;">
+                <h2><i class="fas fa-cog"></i> Глобальные настройки</h2>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5>Настройки цен</h5>
+                                <div class="mb-3">
+                                    <label class="form-label">Стоимость доставки (лей)</label>
+                                    <input type="number" class="form-control" id="delivery-cost" value="100">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Процент наценки (%)</label>
+                                    <input type="number" class="form-control" id="markup-percentage" value="50">
+                                </div>
+                                <button class="btn btn-success" onclick="saveSettings()">
+                                    <i class="fas fa-save"></i> Сохранить
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Функция входа
+        function login() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            console.log('🔑 Попытка входа:', username);
+            document.getElementById('login-status').innerHTML = '<div class="alert alert-info">Проверяем данные...</div>';
+            
+            fetch('/api/login', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({username, password})
+            })
+            .then(res => {
+                console.log('📡 Ответ сервера:', res.status);
+                return res.json();
+            })
+            .then(data => {
+                console.log('📊 Данные ответа:', data);
+                if (data.success) {
+                    console.log('✅ УСПЕХ! Переключаем интерфейс...');
+                    
+                    // Полностью скрываем блок входа
+                    document.getElementById('login-section').style.display = 'none';
+                    
+                    // Показываем приложение
+                    document.getElementById('app-section').style.display = 'block';
+                    
+                    console.log('🎉 Интерфейс переключен успешно!');
+                } else {
+                    document.getElementById('login-status').innerHTML = '<div class="alert alert-danger">Неверный логин или пароль</div>';
+                }
+            })
+            .catch(err => {
+                console.error('❌ Ошибка:', err);
+                document.getElementById('login-status').innerHTML = '<div class="alert alert-danger">Ошибка подключения</div>';
+            });
+        }
+
+        // Переключение вкладок
+        function showTab(tabName) {
+            console.log('📂 Переключаем на вкладку:', tabName);
+            
+            // Скрываем все вкладки
+            const tabs = ['dashboard', 'flowers', 'categories', 'bouquets', 'settings'];
+            tabs.forEach(tab => {
+                document.getElementById('tab-' + tab).style.display = 'none';
+            });
+            
+            // Убираем активность с навигации
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            
+            // Показываем нужную вкладку
+            document.getElementById('tab-' + tabName).style.display = 'block';
+            
+            // Активируем навигацию
+            event.target.classList.add('active');
+            
+            // Загружаем данные для конкретной вкладки
+            if (tabName === 'flowers') {
+                loadFlowers();
+            }
+        }
+
+        // Управление цветами
+        function loadFlowers() {
+            console.log('🌸 Загружаем цветы...');
+            document.getElementById('flowers-loading').style.display = 'block';
+            document.getElementById('flowers-table').style.display = 'none';
+            document.getElementById('flowers-empty').style.display = 'none';
+            
+            fetch('/api/flowers')
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById('flowers-loading').style.display = 'none';
+                    
+                    if (data.length > 0) {
+                        renderFlowersTable(data);
+                        document.getElementById('flowers-table').style.display = 'block';
+                    } else {
+                        document.getElementById('flowers-empty').style.display = 'block';
+                    }
+                })
+                .catch(err => {
+                    console.error('❌ Ошибка загрузки цветов:', err);
+                    document.getElementById('flowers-loading').style.display = 'none';
+                    document.getElementById('flowers-empty').style.display = 'block';
+                });
+        }
+
+        function renderFlowersTable(flowers) {
+            const tbody = document.getElementById('flowers-tbody');
+            tbody.innerHTML = '';
+            
+            flowers.forEach(flower => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${flower.id}</td>
+                    <td>${flower.name}</td>
+                    <td>${flower.price_per_unit} лей</td>
+                    <td>
+                        <button class="btn btn-sm btn-warning me-1" onclick="editFlower(${flower.id}, '${flower.name}', ${flower.price_per_unit})">
+                            <i class="fas fa-edit"></i> Изменить
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteFlower(${flower.id}, '${flower.name}')">
+                            <i class="fas fa-trash"></i> Удалить
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function showAddFlowerForm() {
+            document.getElementById('flower-form-title').textContent = 'Добавить цветок';
+            document.getElementById('flower-name').value = '';
+            document.getElementById('flower-price').value = '';
+            document.getElementById('flower-form').style.display = 'block';
+            document.getElementById('flower-form').dataset.mode = 'add';
+        }
+
+        function editFlower(id, name, price) {
+            document.getElementById('flower-form-title').textContent = 'Редактировать цветок';
+            document.getElementById('flower-name').value = name;
+            document.getElementById('flower-price').value = price;
+            document.getElementById('flower-form').style.display = 'block';
+            document.getElementById('flower-form').dataset.mode = 'edit';
+            document.getElementById('flower-form').dataset.id = id;
+        }
+
+        function hideFlowerForm() {
+            document.getElementById('flower-form').style.display = 'none';
+        }
+
+        function deleteFlower(id, name) {
+            if (!confirm(`Удалить цветок "${name}"?`)) return;
+            
+            fetch(`/api/flowers/${id}`, { method: 'DELETE' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(data.message);
+                        loadFlowers();
+                    } else {
+                        alert('Ошибка удаления: ' + data.message);
+                    }
+                })
+                .catch(err => {
+                    console.error('❌ Ошибка удаления:', err);
+                    alert('Ошибка удаления цветка');
+                });
+        }
+
+        // Функция выхода
+        function logout() {
+            console.log('🚪 Выход из системы');
+            document.getElementById('app-section').style.display = 'none';
+            document.getElementById('login-section').style.display = 'block';
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+            document.getElementById('login-status').innerHTML = '';
+        }
+
+        // Заглушки
+        function saveSettings() {
+            alert('✅ Настройки сохранены!');
+        }
+
+        function recalculatePrices() {
+            alert('🔄 Цены пересчитаны!');
+        }
+
+        // Обработка формы цветов
+        document.getElementById('flower-form-data').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const name = document.getElementById('flower-name').value;
+            const price = parseFloat(document.getElementById('flower-price').value);
+            const form = document.getElementById('flower-form');
+            const mode = form.dataset.mode;
+            const id = form.dataset.id;
+            
+            if (!name || !price || price <= 0) {
+                alert('Заполните все поля корректно');
+                return;
+            }
+            
+            const data = { name, price_per_unit: price };
+            const url = mode === 'edit' ? `/api/flowers/${id}` : '/api/flowers';
+            const method = mode === 'edit' ? 'PUT' : 'POST';
+            
+            fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    hideFlowerForm();
+                    loadFlowers();
+                } else {
+                    alert('Ошибка: ' + data.message);
+                }
+            })
+            .catch(err => {
+                console.error('❌ Ошибка сохранения:', err);
+                alert('Ошибка сохранения цветка');
+            });
+        });
+
+        // Вход по Enter
+        document.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && document.getElementById('login-section').style.display !== 'none') {
+                login();
+            }
+        });
+    </script>
+</body>
+</html>

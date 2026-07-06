@@ -1,0 +1,289 @@
+{% extends "base.html" %}
+
+{% block title %}Цветы | Цветочная Мафия Молдова{% endblock %}
+
+{% block content %}
+<style>
+.flower-card {
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    transition: box-shadow 0.2s;
+}
+.flower-card:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+.flower-card .flower-info {
+    flex: 1;
+    min-width: 0;
+}
+.flower-card .flower-name {
+    font-weight: 700;
+    font-size: 15px;
+    margin: 0;
+    white-space: normal;
+    word-break: break-word;
+}
+.flower-card .flower-meta {
+    font-size: 12px;
+    color: #666;
+    margin-top: 2px;
+}
+.flower-card .flower-price {
+    font-size: 16px;
+    font-weight: 700;
+    color: #0dcaf0;
+    background: #e0f7fa;
+    padding: 4px 12px;
+    border-radius: 12px;
+    white-space: nowrap;
+}
+.flower-card .flower-actions {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+}
+.flower-card .flower-actions .btn {
+    font-size: 13px;
+    padding: 4px 8px;
+    border-radius: 6px;
+}
+@media (min-width: 992px) {
+    .desktop-table { display: block; }
+    .mobile-cards { display: none; }
+}
+@media (max-width: 991px) {
+    .desktop-table { display: none; }
+    .mobile-cards { display: block; }
+}
+</style>
+
+<div class="container">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+                <h1 class="fs-3 mb-0">
+                    <i class="fas fa-leaf me-2"></i>Ассортимент цветов
+                </h1>
+                <div class="d-flex gap-2 flex-wrap">
+                    <button id="recalculatePricesBtn" class="btn btn-outline-warning btn-sm">
+                        <i class="fas fa-calculator me-1"></i><span class="d-none d-sm-inline">Пересчитать цены</span><span class="d-inline d-sm-none">Пересчёт</span>
+                    </button>
+                    <a href="{{ url_for('flowers_new') }}" class="btn btn-primary btn-sm">
+                        <i class="fas fa-plus me-1"></i><span class="d-none d-sm-inline">Добавить цветок</span><span class="d-inline d-sm-none">+</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if flowers %}
+    <div class="row">
+        <div class="col-12">
+            <!-- Поиск -->
+            <div class="card mb-3">
+                <div class="card-body py-2">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                        <input type="text" id="flowerSearch" class="form-control" placeholder="Поиск по названию (от 2 букв)..." autocomplete="off">
+                        <span class="input-group-text" id="flowerSearchCount">{{ flowers|length }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header py-2">
+                    <h6 class="mb-0 fs-6">
+                        <i class="fas fa-list me-2"></i>Все цветы (<span id="totalCount">{{ flowers|length }}</span>)
+                    </h6>
+                </div>
+                <div class="card-body p-0">
+
+                    <!-- Desktop table -->
+                    <div class="desktop-table">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0" id="flowersTable">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Название</th>
+                                        <th>Цена за ед. (лей)</th>
+                                        <th>В букетах</th>
+                                        <th>Действия</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="flowersTableBody">
+                                    {% for flower in flowers %}
+                                    <tr data-name="{{ flower.name|lower }}">
+                                        <td>{{ flower.id }}</td>
+                                        <td>
+                                            <i class="fas fa-leaf me-2 text-success"></i>
+                                            <strong>{{ flower.name }}</strong>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-info">{{ "%.2f"|format(flower.price_per_unit) }} лей</span>
+                                        </td>
+                                        <td>
+                                            {% if flower.compositions %}
+                                                <span class="badge bg-warning">{{ flower.compositions|length }} букет(ов)</span>
+                                            {% else %}
+                                                <span class="text-muted">Не используется</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <a href="{{ url_for('flowers_edit', id=flower.id) }}" class="btn btn-sm btn-outline-primary">
+                                                    <i class="fas fa-edit"></i> Ред.
+                                                </a>
+                                                {% if not flower.compositions %}
+                                                <form method="POST" action="{{ url_for('flowers_delete', id=flower.id) }}" class="d-inline" onsubmit="return confirm('Удалить этот цветок?')">
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </form>
+                                                {% else %}
+                                                <button type="button" class="btn btn-sm btn-outline-danger" disabled title="Используется в букетах">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Mobile cards -->
+                    <div class="mobile-cards p-2" id="mobileCards">
+                        {% for flower in flowers %}
+                        <div class="flower-card" data-name="{{ flower.name|lower }}">
+                            <div class="flower-info">
+                                <p class="flower-name">
+                                    <i class="fas fa-leaf text-success me-1"></i>{{ flower.name }}
+                                </p>
+                                <div class="flower-meta">
+                                    {% if flower.compositions %}
+                                        <i class="fas fa-gift me-1"></i>{{ flower.compositions|length }} букет(ов)
+                                    {% else %}
+                                        <span class="text-muted">Не используется</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="flower-price">{{ "%.2f"|format(flower.price_per_unit) }} лей</div>
+                            <div class="flower-actions">
+                                <a href="{{ url_for('flowers_edit', id=flower.id) }}" class="btn btn-outline-primary" title="Редактировать">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                {% if not flower.compositions %}
+                                <form method="POST" action="{{ url_for('flowers_delete', id=flower.id) }}" class="d-inline" onsubmit="return confirm('Удалить этот цветок?')">
+                                    <button type="submit" class="btn btn-outline-danger" title="Удалить">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                                {% else %}
+                                <button type="button" class="btn btn-outline-danger" disabled title="Используется в букетах">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-leaf fa-3x text-muted mb-3"></i>
+                    <h5>В ассортименте пока нет цветов</h5>
+                    <p class="text-muted">Добавьте цветы, чтобы начать создание каталога букетов.</p>
+                    <a href="{{ url_for('flowers_new') }}" class="btn btn-primary">
+                        <i class="fas fa-plus me-2"></i>Добавить первый цветок
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    $('#recalculatePricesBtn').click(function() {
+        const btn = $(this);
+        const originalText = btn.html();
+        btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Пересчитываем...');
+        $.post('/api/recalculate-bouquet-prices')
+            .done(function(response) {
+                if (response.success) {
+                    btn.removeClass('btn-outline-warning').addClass('btn-success')
+                       .html('<i class="fas fa-check me-2"></i>Готово!');
+                    if (response.updated_count > 0) {
+                        alert('Пересчитано ' + response.updated_count + ' букетов!');
+                    } else {
+                        alert('Все букеты уже имеют актуальные цены.');
+                    }
+                    setTimeout(function() {
+                        btn.removeClass('btn-success').addClass('btn-outline-warning')
+                           .html(originalText).prop('disabled', false);
+                    }, 3000);
+                } else {
+                    btn.html(originalText).prop('disabled', false);
+                    alert('Ошибка при пересчете цен.');
+                }
+            })
+            .fail(function() {
+                btn.html(originalText).prop('disabled', false);
+                alert('Ошибка соединения.');
+            });
+    });
+
+    if ($.fn.DataTable) {
+        $('#flowersTable').DataTable({
+            "pageLength": 25,
+            "order": [[ 1, "asc" ]],
+            "columnDefs": [
+                { "orderable": false, "targets": 4 }
+            ]
+        });
+    }
+
+    // Live search
+    $('#flowerSearch').on('input', function() {
+        const q = $(this).val().toLowerCase().trim();
+        let visible = 0;
+
+        // Desktop table rows
+        $('#flowersTableBody tr').each(function() {
+            const name = $(this).data('name') || '';
+            const show = q.length < 2 || name.indexOf(q) !== -1;
+            $(this).toggle(show);
+            if (show) visible++;
+        });
+
+        // Mobile cards
+        $('#mobileCards .flower-card').each(function() {
+            const name = $(this).data('name') || '';
+            const show = q.length < 2 || name.indexOf(q) !== -1;
+            $(this).toggle(show);
+        });
+
+        $('#flowerSearchCount, #totalCount').text(visible);
+    });
+});
+</script>
+{% endblock %}

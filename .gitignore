@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Database
+instance/
+*.db
+
+# Local state
+.local/
+
+# Attached assets
+attached_assets/
+
+# Export data
+export.json
+
+# Temp scripts
+import_data.py
+
+# Lock files (optional - uncomment if you want to ignore)
+# uv.lock

@@ -1,0 +1,352 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} | Цветочная Мафия Молдова{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('bouquets_index') }}">
+                            <i class="fas fa-gift me-1"></i>Bouquets
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item active">{{ title }}</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-gift me-2"></i>{{ title }}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" id="bouquetForm">
+                        {{ form.hidden_tag() }}
+                        
+                        <!-- Basic Information -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    {{ form.name.label(class="form-label") }}
+                                    {{ form.name(class="form-control" + (" is-invalid" if form.name.errors else "")) }}
+                                    {% if form.name.errors %}
+                                        <div class="invalid-feedback">
+                                            {% for error in form.name.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    {{ form.sku.label(class="form-label") }}
+                                    {{ form.sku(class="form-control" + (" is-invalid" if form.sku.errors else "")) }}
+                                    {% if form.sku.errors %}
+                                        <div class="invalid-feedback">
+                                            {% for error in form.sku.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                    <div class="form-text">Unique product identifier</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            {{ form.category_id.label(class="form-label") }}
+                            {{ form.category_id(class="form-select" + (" is-invalid" if form.category_id.errors else "")) }}
+                            {% if form.category_id.errors %}
+                                <div class="invalid-feedback">
+                                    {% for error in form.category_id.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Bouquet Composition -->
+                        <div class="mb-4">
+                            <h6 class="border-bottom pb-2 mb-3">
+                                <i class="fas fa-leaf me-2"></i>Bouquet Composition
+                            </h6>
+                            
+                            <div id="compositionContainer">
+                                <!-- Composition rows will be added here dynamically -->
+                            </div>
+                            
+                            <button type="button" class="btn btn-outline-primary" id="addCompositionRow">
+                                <i class="fas fa-plus me-2"></i>Add Flower
+                            </button>
+                        </div>
+
+                        <!-- Price Calculation -->
+                        <div class="mb-4">
+                            <div class="card bg-light">
+                                <div class="card-header">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-calculator me-2"></i>Price Calculation
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="d-flex justify-content-between">
+                                                <span>Flowers Cost:</span>
+                                                <span id="flowersCost">0.00 лей</span>
+                                            </div>
+                                            <div class="d-flex justify-content-between">
+                                                <span>Delivery Cost:</span>
+                                                <span id="deliveryCost">0.00 лей</span>
+                                            </div>
+                                            <div class="d-flex justify-content-between">
+                                                <span>Markup (%):</span>
+                                                <span id="markupPercent">0%</span>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="d-flex justify-content-between border-top pt-2">
+                                                <strong>Final Price:</strong>
+                                                <strong class="text-success" id="finalPrice">0.00 лей</strong>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{{ url_for('bouquets_index') }}" class="btn btn-secondary">
+                                <i class="fas fa-times me-2"></i>Отмена
+                            </a>
+                            <button type="submit" name="action" value="save" class="btn btn-outline-primary">
+                                <i class="fas fa-save me-2"></i>Сохранить
+                            </button>
+                            <button type="submit" name="action" value="save_and_close" class="btn btn-primary">
+                                <i class="fas fa-check me-2"></i>Сохранить и закрыть
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Composition Row Template -->
+<template id="compositionRowTemplate">
+    <div class="composition-row mb-3 p-3 border rounded">
+        <div class="row align-items-center">
+            <div class="col-md-5">
+                <label class="form-label">Flower</label>
+                <select class="form-select flower-select" name="flower_id">
+                    <option value="">Select a flower</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Quantity</label>
+                <input type="number" class="form-control quantity-input" name="quantity" min="1" value="1">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Subtotal</label>
+                <div class="form-control-plaintext subtotal">0.00 лей</div>
+            </div>
+            <div class="col-md-1">
+                <label class="form-label">&nbsp;</label>
+                <button type="button" class="btn btn-outline-danger btn-sm remove-composition">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</template>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let flowers = [];
+let globalSettings = {
+    delivery_cost: 0,
+    markup_percentage: 0
+};
+
+$(document).ready(function() {
+    // Load flowers and settings
+    loadFlowers();
+    loadGlobalSettings();
+    
+    // Add composition row functionality
+    $('#addCompositionRow').click(function() {
+        addCompositionRow();
+    });
+    
+    // Load existing composition if editing
+    {% if request.endpoint == 'bouquets_edit' %}
+        loadExistingComposition();
+    {% endif %}
+    
+    // Initial calculation
+    calculatePrice();
+});
+
+function loadFlowers() {
+    $.get('/api/flowers', function(data) {
+        flowers = data.flowers;
+        updateFlowerSelects();
+    });
+}
+
+function loadGlobalSettings() {
+    $.get('/api/settings', function(data) {
+        globalSettings.delivery_cost = data.delivery_cost;
+        globalSettings.markup_percentage = data.markup_percentage;
+        updatePriceDisplay();
+        calculatePrice();
+    });
+}
+
+function updateFlowerSelects() {
+    $('.flower-select').each(function() {
+        const currentValue = $(this).val();
+        $(this).empty();
+        $(this).append('<option value="">Select a flower</option>');
+        
+        flowers.forEach(function(flower) {
+            const selected = flower.id == currentValue ? 'selected' : '';
+            $(this).append(`<option value="${flower.id}" data-price="${flower.price_per_unit}" ${selected}>${flower.name} - ${flower.price_per_unit} лей</option>`);
+        }.bind(this));
+    });
+}
+
+function addCompositionRow(flowerId = '', quantity = 1) {
+    const template = document.getElementById('compositionRowTemplate');
+    const clone = template.content.cloneNode(true);
+    
+    // Set values if provided
+    if (flowerId) {
+        clone.querySelector('.flower-select').value = flowerId;
+    }
+    clone.querySelector('.quantity-input').value = quantity;
+    
+    // Add event listeners
+    const row = clone.querySelector('.composition-row');
+    
+    // Remove button
+    row.querySelector('.remove-composition').addEventListener('click', function() {
+        row.remove();
+        calculatePrice();
+    });
+    
+    // Flower select change
+    row.querySelector('.flower-select').addEventListener('change', function() {
+        calculateRowSubtotal(row);
+        calculatePrice();
+    });
+    
+    // Quantity change
+    row.querySelector('.quantity-input').addEventListener('input', function() {
+        calculateRowSubtotal(row);
+        calculatePrice();
+    });
+    
+    document.getElementById('compositionContainer').appendChild(clone);
+    updateFlowerSelects();
+    calculateRowSubtotal(row);
+}
+
+function calculateRowSubtotal(row) {
+    const flowerSelect = row.querySelector('.flower-select');
+    const quantityInput = row.querySelector('.quantity-input');
+    const subtotalDisplay = row.querySelector('.subtotal');
+    
+    const price = parseFloat(flowerSelect.selectedOptions[0]?.dataset.price || 0);
+    const quantity = parseInt(quantityInput.value || 0);
+    const subtotal = price * quantity;
+    
+    subtotalDisplay.textContent = subtotal.toFixed(2) + ' лей';
+}
+
+function calculatePrice() {
+    let flowersCost = 0;
+    
+    // Calculate total flowers cost
+    $('.composition-row').each(function() {
+        const flowerSelect = $(this).find('.flower-select');
+        const quantity = parseInt($(this).find('.quantity-input').val() || 0);
+        const price = parseFloat(flowerSelect.find('option:selected').data('price') || 0);
+        
+        flowersCost += price * quantity;
+    });
+    
+    // Apply delivery and markup
+    const deliveryCost = globalSettings.delivery_cost || 0;
+    const markupPercent = globalSettings.markup_percentage || 0;
+    const totalWithDelivery = flowersCost + deliveryCost;
+    const finalPrice = totalWithDelivery * (1 + markupPercent / 100);
+    
+    // Update display
+    $('#flowersCost').text(flowersCost.toFixed(2) + ' лей');
+    $('#deliveryCost').text(deliveryCost.toFixed(2) + ' лей');
+    $('#markupPercent').text(markupPercent + '%');
+    $('#finalPrice').text(finalPrice.toFixed(2) + ' лей');
+    
+    // Always keep delivery cost and markup visible
+    updatePriceDisplay();
+}
+
+function updatePriceDisplay() {
+    $('#deliveryCost').text(globalSettings.delivery_cost.toFixed(2) + ' лей');
+    $('#markupPercent').text(globalSettings.markup_percentage + '%');
+    calculatePrice(); // Recalculate when settings update
+}
+
+function loadExistingComposition() {
+    // This would be populated from the server-side data
+    // For now, add one empty row
+    addCompositionRow();
+}
+
+// Form submission handling
+$('#bouquetForm').submit(function(e) {
+    const compositionData = [];
+    
+    $('.composition-row').each(function() {
+        const flowerId = $(this).find('.flower-select').val();
+        const quantity = parseInt($(this).find('.quantity-input').val() || 0);
+        
+        if (flowerId && quantity > 0) {
+            compositionData.push({
+                flower_id: flowerId,
+                quantity: quantity
+            });
+        }
+    });
+    
+    // Remove existing composition_data input if it exists
+    $('input[name="composition_data"]').remove();
+    
+    // Add composition data to form
+    $('<input>').attr({
+        type: 'hidden',
+        name: 'composition_data',
+        value: JSON.stringify(compositionData)
+    }).appendTo(this);
+    
+    console.log('Submitting composition data:', compositionData);
+});
+
+// Initialize with one empty row
+if ($('.composition-row').length === 0) {
+    addCompositionRow();
+}
+</script>
+{% endblock %}
