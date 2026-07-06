@@ -60,6 +60,42 @@
                             </div>
                         </div>
 
+                        <div class="border rounded p-3 mb-4">
+                            <h6 class="mb-3">
+                                <i class="fas fa-cloud-upload-alt me-2"></i>Синхронизация с сайтом
+                            </h6>
+
+                            <div class="mb-3">
+                                {{ form.site_sync_endpoint.label(class="form-label") }}
+                                {{ form.site_sync_endpoint(class="form-control" + (" is-invalid" if form.site_sync_endpoint.errors else ""), placeholder="https://flowersmafia.md/.../crm-price-sync.php") }}
+                                {% if form.site_sync_endpoint.errors %}
+                                    <div class="invalid-feedback">
+                                        {% for error in form.site_sync_endpoint.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                                <div class="form-text">
+                                    URL защищенного endpoint на Joomla/VirtueMart, который принимает цены из CRM по артикулам.
+                                </div>
+                            </div>
+
+                            <div class="mb-0">
+                                {{ form.site_sync_token.label(class="form-label") }}
+                                {{ form.site_sync_token(class="form-control" + (" is-invalid" if form.site_sync_token.errors else ""), placeholder="секретный token") }}
+                                {% if form.site_sync_token.errors %}
+                                    <div class="invalid-feedback">
+                                        {% for error in form.site_sync_token.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                                <div class="form-text">
+                                    Этот token должен совпадать с token в файле endpoint на сайте.
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="d-grid gap-2 d-md-flex justify-content-md-end">
                             <button type="submit" class="btn btn-primary">
                                 <i class="fas fa-save me-2"></i>Сохранить настройки

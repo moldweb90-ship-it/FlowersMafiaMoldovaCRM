@@ -1,5 +1,7 @@
 import csv
 import io
+import os
+import requests
 from urllib.parse import quote
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill
@@ -11,6 +13,79 @@ from app import app, db
 # Импорты
 from models import Flower, Category, Bouquet, BouquetComposition, GlobalSetting, User
 from forms import FlowerForm, CategoryForm, BouquetForm, GlobalSettingsForm, ExportForm, LoginForm, UserForm, RegisterForm
+
+
+def build_bouquet_filter_query(category_id=None, search_query='', published_filter=''):
+    query = Bouquet.query
+
+    if category_id:
+        query = query.filter_by(category_id=category_id)
+
+    if published_filter == '1':
+        query = query.filter_by(published=True)
+    elif published_filter == '0':
+        query = query.filter_by(published=False)
+
+    if search_query:
+        search_pattern = f'%{search_query}%'
+        query = query.filter(
+            (Bouquet.name.ilike(search_pattern)) |
+            (Bouquet.sku.ilike(search_pattern))
+        )
+
+    return query
+
+
+def get_site_sync_settings():
+    endpoint = GlobalSetting.get_value(
+        'site_sync_endpoint',
+        None,
+        os.environ.get('SITE_SYNC_ENDPOINT', '')
+    )
+    token = GlobalSetting.get_value(
+        'site_sync_token',
+        None,
+        os.environ.get('SITE_SYNC_TOKEN', '')
+    )
+
+    return {
+        'endpoint': (endpoint or '').strip(),
+        'token': (token or '').strip(),
+    }
+
+
+def sync_prices_to_site(items):
+    settings = get_site_sync_settings()
+    if not settings['endpoint'] or not settings['token']:
+        return {
+            'success': False,
+            'configured': False,
+            'message': 'Синхронизация с сайтом еще не настроена: нужен endpoint Joomla и секретный token.',
+            'results': []
+        }
+
+    response = requests.post(
+        settings['endpoint'],
+        json={'items': items},
+        headers={
+            'X-CRM-Token': settings['token'],
+            'Content-Type': 'application/json'
+        },
+        timeout=30
+    )
+
+    try:
+        data = response.json()
+    except ValueError:
+        data = {'message': response.text[:500]}
+
+    return {
+        'success': response.ok and bool(data.get('success', True)),
+        'configured': True,
+        'status_code': response.status_code,
+        'message': data.get('message', 'Ответ сайта получен.'),
+        'results': data.get('results', [])
+    }
 
 # Проверка авторизации
 def require_login(f):
@@ -505,25 +580,7 @@ def bouquets_index():
     per_page = 20  # Количество букетов на странице
     
     # Строим запрос с фильтрами
-    query = Bouquet.query
-    
-    # Фильтр по категории
-    if category_id:
-        query = query.filter_by(category_id=category_id)
-    
-    # Фильтр по статусу публикации
-    if published_filter == '1':
-        query = query.filter_by(published=True)
-    elif published_filter == '0':
-        query = query.filter_by(published=False)
-    
-    # Поиск по названию или артикулу
-    if search_query:
-        search_pattern = f'%{search_query}%'
-        query = query.filter(
-            (Bouquet.name.ilike(search_pattern)) | 
-            (Bouquet.sku.ilike(search_pattern))
-        )
+    query = build_bouquet_filter_query(category_id, search_query, published_filter)
     
     # Применяем сортировку и пагинацию
     bouquets_paginated = query.order_by(Bouquet.name).paginate(
@@ -548,7 +605,8 @@ def bouquets_index():
                          categories=categories,
                          selected_category_id=category_id,
                          selected_category_name=selected_category_name,
-                         search_query=search_query)
+                         search_query=search_query,
+                         published_filter=published_filter)
 
 
 @app.route('/bouquets/new', methods=['GET', 'POST'])
@@ -823,10 +881,14 @@ def settings_index():
             # Проверяем, что данные не None
             delivery_cost = form.delivery_cost.data if form.delivery_cost.data is not None else 600.0
             markup_percentage = form.markup_percentage.data if form.markup_percentage.data is not None else 17.0
+            site_sync_endpoint = (form.site_sync_endpoint.data or '').strip()
+            site_sync_token = (form.site_sync_token.data or '').strip()
             
             # Сохраняем глобальные настройки (set_value автоматически сохранит их с user_id=None)
             GlobalSetting.set_value('delivery_cost', str(delivery_cost))
             GlobalSetting.set_value('markup_percentage', str(markup_percentage))
+            GlobalSetting.set_value('site_sync_endpoint', site_sync_endpoint)
+            GlobalSetting.set_value('site_sync_token', site_sync_token)
             flash('Настройки успешно обновлены!', 'success')
             return redirect(url_for('settings_index'))
         except Exception as e:
@@ -838,10 +900,14 @@ def settings_index():
     if request.method == 'GET':
         delivery_cost = GlobalSetting.get_value('delivery_cost', None, '600')
         markup_percentage = GlobalSetting.get_value('markup_percentage', None, '17')
+        site_sync_endpoint = GlobalSetting.get_value('site_sync_endpoint', None, os.environ.get('SITE_SYNC_ENDPOINT', ''))
+        site_sync_token = GlobalSetting.get_value('site_sync_token', None, os.environ.get('SITE_SYNC_TOKEN', ''))
         if delivery_cost:
             form.delivery_cost.data = float(delivery_cost)
         if markup_percentage:
             form.markup_percentage.data = float(markup_percentage)
+        form.site_sync_endpoint.data = site_sync_endpoint or ''
+        form.site_sync_token.data = site_sync_token or ''
     
     return render_template('settings/index.html', form=form)
 
@@ -973,6 +1039,86 @@ def api_recalculate_bouquet_prices():
             'success': False,
             'error': str(e),
             'message': 'Ошибка при пересчете цен. Попробуйте еще раз.'
+        }), 500
+
+
+@app.route('/api/site-sync-prices', methods=['POST'])
+def api_site_sync_prices():
+    """Preview or send CRM bouquet prices to Joomla/VirtueMart by SKU."""
+    try:
+        data = request.get_json(silent=True) or {}
+        mode = data.get('mode', 'preview')
+        category_id = data.get('category_id')
+        search_query = (data.get('search') or '').strip()
+        published_filter = data.get('published') or ''
+
+        try:
+            category_id = int(category_id) if category_id else None
+        except (TypeError, ValueError):
+            category_id = None
+
+        query = build_bouquet_filter_query(category_id, search_query, published_filter)
+        bouquets = query.order_by(Bouquet.sku).all()
+
+        items = []
+        missing_sku = []
+
+        for bouquet in bouquets:
+            new_price = bouquet.calculate_price()
+            bouquet.final_price = new_price
+
+            if not bouquet.sku:
+                missing_sku.append({
+                    'id': bouquet.id,
+                    'name': bouquet.name
+                })
+                continue
+
+            items.append({
+                'sku': bouquet.sku.strip(),
+                'name': bouquet.name,
+                'price': int(round(new_price / 10) * 10),
+                'category': bouquet.category.name if bouquet.category else '',
+                'published': bool(bouquet.published)
+            })
+
+        db.session.commit()
+
+        summary = {
+            'total_matched': len(bouquets),
+            'ready_to_sync': len(items),
+            'missing_sku': missing_sku,
+            'category_id': category_id,
+            'search': search_query,
+            'published': published_filter
+        }
+
+        if mode == 'preview':
+            return jsonify({
+                'success': True,
+                'mode': 'preview',
+                'summary': summary,
+                'items': items[:50],
+                'truncated': len(items) > 50,
+                'configured': bool(get_site_sync_settings()['endpoint'] and get_site_sync_settings()['token'])
+            })
+
+        sync_result = sync_prices_to_site(items)
+
+        return jsonify({
+            'success': bool(sync_result.get('success')),
+            'mode': 'sync',
+            'summary': summary,
+            'site': sync_result
+        }), 200 if sync_result.get('success') else 400
+
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f'Error syncing prices to site: {e}')
+        return jsonify({
+            'success': False,
+            'message': 'Ошибка синхронизации цен с сайтом.',
+            'error': str(e)
         }), 500
 
 

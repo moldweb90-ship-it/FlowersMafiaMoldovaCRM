@@ -83,6 +83,22 @@
 .filter-card .form-select {
     font-size: 14px;
 }
+.site-sync-btn {
+    border: 0;
+    background: linear-gradient(135deg, #20c997 0%, #0d6efd 100%);
+    color: #fff;
+    box-shadow: 0 8px 18px rgba(13, 110, 253, 0.22);
+}
+.site-sync-btn:hover,
+.site-sync-btn:focus {
+    color: #fff;
+    transform: translateY(-1px);
+    box-shadow: 0 10px 22px rgba(13, 110, 253, 0.3);
+}
+.sync-preview-table {
+    max-height: 320px;
+    overflow: auto;
+}
 </style>
 
 <div class="container">
@@ -92,9 +108,22 @@
                 <h1 class="fs-3">
                     <i class="fas fa-gift me-2"></i>Каталог букетов
                 </h1>
-                <a href="{{ url_for('bouquets_new') }}" class="btn btn-primary btn-sm">
-                    <i class="fas fa-plus me-1"></i><span class="d-none d-sm-inline">Добавить букет</span><span class="d-inline d-sm-none">+</span>
-                </a>
+                <div class="d-flex gap-2">
+                    <button type="button"
+                            id="siteSyncPreviewBtn"
+                            class="btn btn-sm site-sync-btn"
+                            data-category-id="{{ selected_category_id or '' }}"
+                            data-search="{{ search_query or '' }}"
+                            data-published="{{ published_filter or '' }}"
+                            {% if not bouquets %}disabled{% endif %}>
+                        <i class="fas fa-cloud-upload-alt me-1"></i>
+                        <span class="d-none d-sm-inline">Пересчет на сайте</span>
+                        <span class="d-inline d-sm-none">Сайт</span>
+                    </button>
+                    <a href="{{ url_for('bouquets_new') }}" class="btn btn-primary btn-sm">
+                        <i class="fas fa-plus me-1"></i><span class="d-none d-sm-inline">Добавить букет</span><span class="d-inline d-sm-none">+</span>
+                    </a>
+                </div>
             </div>
         </div>
     </div>
@@ -369,4 +398,201 @@
     </div>
     {% endif %}
 </div>
+
+<div class="modal fade" id="siteSyncModal" tabindex="-1" aria-labelledby="siteSyncModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="siteSyncModalLabel">
+                    <i class="fas fa-cloud-upload-alt me-2"></i>Пересчет цен на сайте
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+            </div>
+            <div class="modal-body">
+                <div id="siteSyncAlert" class="alert alert-info mb-3">
+                    Подготовка списка букетов...
+                </div>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-6 col-md-3">
+                        <div class="border rounded p-2 text-center">
+                            <div class="small text-muted">Найдено</div>
+                            <div class="fs-5 fw-bold" id="syncTotalMatched">0</div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="border rounded p-2 text-center">
+                            <div class="small text-muted">К отправке</div>
+                            <div class="fs-5 fw-bold text-success" id="syncReadyCount">0</div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <div class="border rounded p-2">
+                            <div class="small text-muted">Выборка</div>
+                            <div class="fw-semibold" id="syncScopeText">Все букеты</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sync-preview-table table-responsive border rounded">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Артикул</th>
+                                <th>Название</th>
+                                <th>Категория</th>
+                                <th class="text-end">Новая цена</th>
+                            </tr>
+                        </thead>
+                        <tbody id="siteSyncPreviewRows">
+                            <tr>
+                                <td colspan="4" class="text-muted text-center py-3">Загрузка...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="small text-muted mt-2" id="syncTruncatedNote"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-success" id="siteSyncRunBtn" disabled>
+                    <i class="fas fa-paper-plane me-1"></i>Отправить цены на сайт
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    const previewBtn = document.getElementById('siteSyncPreviewBtn');
+    const runBtn = document.getElementById('siteSyncRunBtn');
+    const modalEl = document.getElementById('siteSyncModal');
+    const modal = modalEl ? new bootstrap.Modal(modalEl) : null;
+
+    function getPayload(mode) {
+        return {
+            mode: mode,
+            category_id: previewBtn?.dataset.categoryId || '',
+            search: previewBtn?.dataset.search || '',
+            published: previewBtn?.dataset.published || ''
+        };
+    }
+
+    function scopeText(payload) {
+        const parts = [];
+        if (payload.category_id) {
+            parts.push('текущая категория');
+        } else {
+            parts.push('все категории');
+        }
+        if (payload.search) {
+            parts.push(`поиск: "${payload.search}"`);
+        }
+        if (payload.published === '1') {
+            parts.push('только опубликованные');
+        } else if (payload.published === '0') {
+            parts.push('только скрытые');
+        }
+        return parts.join(' · ');
+    }
+
+    function setAlert(type, text) {
+        const alert = document.getElementById('siteSyncAlert');
+        alert.className = `alert alert-${type} mb-3`;
+        alert.textContent = text;
+    }
+
+    function renderRows(items) {
+        const body = document.getElementById('siteSyncPreviewRows');
+        if (!items.length) {
+            body.innerHTML = '<tr><td colspan="4" class="text-muted text-center py-3">Нет букетов для отправки</td></tr>';
+            return;
+        }
+
+        body.innerHTML = items.map((item) => `
+            <tr>
+                <td><code>${item.sku}</code></td>
+                <td>${item.name}</td>
+                <td>${item.category || ''}</td>
+                <td class="text-end fw-semibold">${item.price} лей</td>
+            </tr>
+        `).join('');
+    }
+
+    async function requestSync(mode) {
+        const response = await fetch('/api/site-sync-prices', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(getPayload(mode))
+        });
+        const data = await response.json();
+        if (!response.ok && mode === 'sync') {
+            throw data;
+        }
+        return data;
+    }
+
+    previewBtn?.addEventListener('click', async function() {
+        modal?.show();
+        runBtn.disabled = true;
+        runBtn.innerHTML = '<i class="fas fa-paper-plane me-1"></i>Отправить цены на сайт';
+        document.getElementById('siteSyncPreviewRows').innerHTML = '<tr><td colspan="4" class="text-muted text-center py-3">Загрузка...</td></tr>';
+        document.getElementById('syncTruncatedNote').textContent = '';
+
+        const payload = getPayload('preview');
+        document.getElementById('syncScopeText').textContent = scopeText(payload);
+
+        try {
+            const data = await requestSync('preview');
+            document.getElementById('syncTotalMatched').textContent = data.summary.total_matched;
+            document.getElementById('syncReadyCount').textContent = data.summary.ready_to_sync;
+            renderRows(data.items || []);
+
+            if (data.truncated) {
+                document.getElementById('syncTruncatedNote').textContent = 'Показаны первые 50 позиций. На сайт будет отправлена вся выбранная выборка.';
+            }
+
+            if (!data.configured) {
+                setAlert('warning', 'CRM готова, но endpoint Joomla еще не настроен. После установки модуля на сайт эта кнопка начнет отправлять цены.');
+                runBtn.disabled = true;
+            } else if (data.summary.ready_to_sync > 0) {
+                setAlert('info', 'Проверьте артикулы и цены. Отправка начнется только после подтверждения.');
+                runBtn.disabled = false;
+            } else {
+                setAlert('warning', 'Нет букетов с артикулами для отправки.');
+                runBtn.disabled = true;
+            }
+        } catch (error) {
+            setAlert('danger', error.message || 'Не удалось подготовить пересчет.');
+        }
+    });
+
+    runBtn?.addEventListener('click', async function() {
+        runBtn.disabled = true;
+        runBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Отправка...';
+        setAlert('info', 'Отправляю новые цены на сайт...');
+
+        try {
+            const data = await requestSync('sync');
+            if (data.success) {
+                setAlert('success', data.site?.message || 'Цены успешно отправлены на сайт.');
+                runBtn.innerHTML = '<i class="fas fa-check me-1"></i>Готово';
+            } else {
+                setAlert('danger', data.site?.message || 'Сайт вернул ошибку синхронизации.');
+                runBtn.disabled = false;
+                runBtn.innerHTML = '<i class="fas fa-paper-plane me-1"></i>Попробовать еще раз';
+            }
+        } catch (error) {
+            setAlert('danger', error.message || error.site?.message || 'Не удалось отправить цены на сайт.');
+            runBtn.disabled = false;
+            runBtn.innerHTML = '<i class="fas fa-paper-plane me-1"></i>Попробовать еще раз';
+        }
+    });
+})();
+</script>
 {% endblock %}

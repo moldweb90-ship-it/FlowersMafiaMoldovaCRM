@@ -1,6 +1,6 @@
 from flask_wtf import FlaskForm
 from wtforms import StringField, FloatField, SelectField, IntegerField, FieldList, FormField, PasswordField, BooleanField, SubmitField
-from wtforms.validators import DataRequired, NumberRange, Length, ValidationError, EqualTo, Email
+from wtforms.validators import DataRequired, NumberRange, Length, ValidationError, EqualTo, Email, Optional
 from models import Flower, Category, Bouquet
 
 class FlowerForm(FlaskForm):
@@ -61,6 +61,14 @@ class GlobalSettingsForm(FlaskForm):
     markup_percentage = FloatField('Процент наценки (%)', validators=[
         DataRequired(message='Процент наценки обязателен'),
         NumberRange(min=0, max=1000, message='Процент наценки должен быть от 0 до 1000')
+    ])
+    site_sync_endpoint = StringField('Endpoint синхронизации сайта', validators=[
+        Optional(),
+        Length(max=500, message='URL endpoint не должен быть длиннее 500 символов')
+    ])
+    site_sync_token = StringField('Секретный token синхронизации', validators=[
+        Optional(),
+        Length(max=200, message='Token не должен быть длиннее 200 символов')
     ])
 
 class ExportForm(FlaskForm):
